@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>원더박스 판매 시스템</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://unpkg.com/@zxing/library@0.19.1/umd/index.min.js"></script>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
   body { background: #0b0b14; color: #e8e4dc; font-family: 'Apple SD Gothic Neo', 'Pretendard', 'Noto Sans KR', sans-serif; min-height: 100vh; padding-bottom: 90px; }
@@ -65,6 +66,25 @@
   .pill-price.discounted { color: #e8a87a; font-weight: 700; }
   .pill-price.in-cart { color: #e8c87a; font-weight: 700; }
   .pill-badge { background: #e8c87a; color: #0b0b14; font-size: 11px; font-weight: 800; width: 22px; height: 22px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .scan-btn { background: #111120; border: 1px solid #1c1c2e; border-radius: 8px; color: #888; font-size: 13px; font-weight: 600; padding: 8px 13px; cursor: pointer; font-family: inherit; white-space: nowrap; }
+  .scan-modal { background: #121220; border-radius: 16px 16px 0 0; width: 100vw; max-width: 480px; margin: auto auto 0; padding: 20px 20px 32px; display: flex; flex-direction: column; gap: 14px; }
+  .scan-head { display: flex; justify-content: space-between; align-items: center; }
+  .scan-title { font-size: 16px; font-weight: 800; }
+  .scan-viewport { position: relative; width: 100%; aspect-ratio: 4/3; background: #000; border-radius: 10px; overflow: hidden; }
+  .scan-viewport video { width: 100%; height: 100%; object-fit: cover; }
+  .scan-line { position: absolute; top: 50%; left: 8%; width: 84%; height: 2px; background: rgba(232,200,122,0.7); box-shadow: 0 0 8px rgba(232,200,122,0.5); animation: scanline 2s ease-in-out infinite; }
+  @keyframes scanline { 0%,100% { top: 30%; } 50% { top: 70%; } }
+  .scan-corner { position: absolute; width: 20px; height: 20px; border-color: #e8c87a; border-style: solid; }
+  .scan-corner.tl { top: 10px; left: 10px; border-width: 3px 0 0 3px; }
+  .scan-corner.tr { top: 10px; right: 10px; border-width: 3px 3px 0 0; }
+  .scan-corner.bl { bottom: 10px; left: 10px; border-width: 0 0 3px 3px; }
+  .scan-corner.br { bottom: 10px; right: 10px; border-width: 0 3px 3px 0; }
+  .scan-status { font-size: 13px; color: #555; text-align: center; }
+  .scan-result { background: rgba(232,200,122,0.08); border: 1px solid rgba(232,200,122,0.3); border-radius: 10px; padding: 14px 16px; }
+  .scan-result-title { font-size: 15px; font-weight: 700; color: #e8e4dc; margin-bottom: 4px; }
+  .scan-result-price { font-size: 13px; color: #e8c87a; font-weight: 600; margin-bottom: 12px; }
+  .scan-result-btn { width: 100%; background: #e8c87a; border: none; color: #0b0b14; border-radius: 8px; padding: 12px 0; font-size: 14px; font-weight: 800; cursor: pointer; font-family: inherit; }
+  .scan-notfound { font-size: 13px; color: #ff8a8a; text-align: center; }
   .tap-hint { font-size: 11px; color: #2e2e44; margin-left: auto; white-space: nowrap; }
   .footer { position: fixed; bottom: 0; right: 0; padding: 6px 14px; text-align: right; pointer-events: none; z-index: 50; }
   .footer-name { display: block; font-size: 12px; color: #555; font-weight: 600; }
@@ -86,6 +106,7 @@
   .bar-total { font-size: 15px; font-weight: 800; }
   .bar-open-btn { background: #e8c87a; border: none; color: #0b0b14; border-radius: 8px; padding: 9px 14px; font-size: 13px; font-weight: 800; cursor: pointer; white-space: nowrap; font-family: inherit; }
   .overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.78); backdrop-filter: blur(4px); display: flex; justify-content: flex-end; z-index: 200; }
+  #scan-overlay { justify-content: center; align-items: flex-end; }
   .drawer { width: min(440px, 100vw); background: #121220; border-left: 1px solid #1e1e30; display: flex; flex-direction: column; height: 100%; overflow: hidden; }
   .drawer-head { display: flex; align-items: center; justify-content: space-between; padding: 19px 20px 13px; border-bottom: 1px solid #1e1e30; flex-shrink: 0; }
   .drawer-title { font-size: 16px; font-weight: 800; }
@@ -201,6 +222,7 @@
 
   <div class="toolbar">
     <input class="search-input" placeholder="🔍  제목 검색" oninput="onSearch(this.value)" id="search-input">
+    <button class="scan-btn" onclick="openScanner()">📷 스캔</button>
     <span class="search-cnt" id="search-cnt"></span>
     <span class="tap-hint">탭: 담기 / 재탭: 빼기 / 길게: 추가</span>
   </div>
@@ -218,6 +240,26 @@
         <button class="bar-open-btn" onclick="openCart()">장바구니 보기</button>
       </div>
     </div>
+  </div>
+</div>
+
+<!-- 바코드 스캔 모달 -->
+<div class="overlay" id="scan-overlay" style="display:none" onclick="closeScanner(event)">
+  <div class="scan-modal" onclick="event.stopPropagation()">
+    <div class="scan-head">
+      <span class="scan-title">바코드 스캔</span>
+      <button class="icon-btn" onclick="closeScanner()">✕</button>
+    </div>
+    <div class="scan-viewport">
+      <video id="scan-video" autoplay muted playsinline></video>
+      <div class="scan-line"></div>
+      <div class="scan-corner tl"></div>
+      <div class="scan-corner tr"></div>
+      <div class="scan-corner bl"></div>
+      <div class="scan-corner br"></div>
+    </div>
+    <div class="scan-status" id="scan-status">카메라를 바코드에 가져다 대세요</div>
+    <div class="scan-result" id="scan-result" style="display:none"></div>
   </div>
 </div>
 
@@ -370,7 +412,8 @@ function parseBooks(rows, filename) {
     lastCat = cat;
 
     if (!result[cat]) { result[cat] = []; order.push(cat); }
-    result[cat].push({ id: cat + '_' + result[cat].length, title, price });
+    const isbn = String(cells[3] || '').replace(/\D/g, '');
+    result[cat].push({ id: cat + '_' + result[cat].length, title, price, isbn });
     count++;
   }
 
@@ -501,7 +544,80 @@ function addQty(id) {
   renderBooks(); updateCartBar();
 }
 
-// 모바일 길게 누르기 처리
+// ── 바코드 스캐너 ─────────────────────────────────────────────
+let codeReader = null;
+let scannerActive = false;
+
+function openScanner() {
+  document.getElementById('scan-overlay').style.display = 'flex';
+  document.getElementById('scan-result').style.display = 'none';
+  document.getElementById('scan-status').textContent = '카메라를 바코드에 가져다 대세요';
+  startScanner();
+}
+
+function closeScanner(e) {
+  if (e && e.target !== document.getElementById('scan-overlay')) return;
+  stopScanner();
+  document.getElementById('scan-overlay').style.display = 'none';
+}
+
+function startScanner() {
+  if (scannerActive) return;
+  try {
+    codeReader = new ZXing.BrowserMultiFormatReader();
+    scannerActive = true;
+    codeReader.decodeFromVideoDevice(null, 'scan-video', (result, err) => {
+      if (result) {
+        const isbn = result.getText().replace(/\D/g, '');
+        handleScanResult(isbn);
+      }
+    });
+  } catch(e) {
+    document.getElementById('scan-status').textContent = '카메라를 사용할 수 없습니다.';
+  }
+}
+
+function stopScanner() {
+  if (codeReader) {
+    codeReader.reset();
+    codeReader = null;
+  }
+  scannerActive = false;
+}
+
+function handleScanResult(isbn) {
+  const allFlat = Object.values(allBooks).flat();
+  const book = allFlat.find(b => b.isbn && b.isbn === isbn);
+
+  const resultEl = document.getElementById('scan-result');
+  const statusEl = document.getElementById('scan-status');
+
+  if (book) {
+    const cp = calcPrice(book.price);
+    statusEl.textContent = '✓ 인식됨';
+    resultEl.style.display = 'block';
+    resultEl.innerHTML = `
+      <div class="scan-result-title">${escHtml(book.title)}</div>
+      <div class="scan-result-price">${fmt(cp)}원${book.isbn ? ' · ISBN ' + book.isbn : ''}</div>
+      <button class="scan-result-btn" onclick="scanAddToCart('${book.id}')">장바구니에 담기</button>`;
+  } else {
+    statusEl.textContent = '';
+    resultEl.style.display = 'block';
+    resultEl.innerHTML = `<div class="scan-notfound">목록에 없는 도서입니다 (${isbn})</div>`;
+    setTimeout(() => {
+      resultEl.style.display = 'none';
+      document.getElementById('scan-status').textContent = '카메라를 바코드에 가져다 대세요';
+    }, 2000);
+  }
+}
+
+function scanAddToCart(id) {
+  addQty(id);
+  stopScanner();
+  document.getElementById('scan-overlay').style.display = 'none';
+  renderBooks();
+  updateCartBar();
+}
 let pressTimer = null;
 document.addEventListener('touchstart', e => {
   const btn = e.target.closest('.pill');
