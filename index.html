@@ -581,30 +581,42 @@ function closeScanner(e) {
 
 function startScanner() {
   if (html5QrCode) return;
-  html5QrCode = new Html5Qrcode('scan-reader');
-  html5QrCode.start(
-    {
-      facingMode: 'environment',
-      advanced: [{ focusMode: 'continuous' }, { zoom: 1.5 }]
-    },
-    {
-      fps: 30,
-      qrbox: { width: 260, height: 100 },
-      aspectRatio: 1.7,
-      formatsToSupport: [
-        Html5QrcodeSupportedFormats.EAN_13,
-        Html5QrcodeSupportedFormats.EAN_8,
-        Html5QrcodeSupportedFormats.CODE_128,
-      ],
-    },
-    (decodedText) => {
-      const isbn = decodedText.replace(/\D/g, '');
-      handleScanResult(isbn);
-    },
-    () => {}
-  ).catch(() => {
-    document.getElementById('scan-status').textContent = '카메라를 사용할 수 없습니다.';
-  });
+
+  // 카메라 권한 먼저 확인
+  navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
+    .then(stream => {
+      stream.getTracks().forEach(t => t.stop()); // 권한 확인 후 바로 해제
+      html5QrCode = new Html5Qrcode('scan-reader');
+      html5QrCode.start(
+        {
+          facingMode: 'environment',
+          advanced: [{ focusMode: 'continuous' }, { zoom: 1.5 }]
+        },
+        {
+          fps: 30,
+          qrbox: { width: 260, height: 100 },
+          aspectRatio: 1.7,
+          formatsToSupport: [
+            Html5QrcodeSupportedFormats.EAN_13,
+            Html5QrcodeSupportedFormats.EAN_8,
+            Html5QrcodeSupportedFormats.CODE_128,
+          ],
+        },
+        (decodedText) => {
+          const isbn = decodedText.replace(/\D/g, '');
+          handleScanResult(isbn);
+        },
+        () => {}
+      ).catch(err => {
+        document.getElementById('scan-status').textContent = '카메라 오류: ' + err.message;
+      });
+    })
+    .catch(err => {
+      const msg = err.name === 'NotAllowedError'
+        ? '카메라 권한을 허용해 주세요 (브라우저 설정)'
+        : '카메라를 사용할 수 없습니다: ' + err.message;
+      document.getElementById('scan-status').textContent = msg;
+    });
 }
 
 function stopScanner() {
