@@ -84,6 +84,10 @@
   .scan-result-title { font-size: 15px; font-weight: 700; color: #e8e4dc; margin-bottom: 4px; }
   .scan-result-price { font-size: 13px; color: #e8c87a; font-weight: 600; margin-bottom: 12px; }
   .scan-result-btn { width: 100%; background: #e8c87a; border: none; color: #0b0b14; border-radius: 8px; padding: 12px 0; font-size: 14px; font-weight: 800; cursor: pointer; font-family: inherit; }
+  .zoom-row { display: flex; align-items: center; gap: 10px; padding: 0 4px; }
+  .zoom-icon { font-size: 16px; }
+  .zoom-slider { flex: 1; accent-color: #e8c87a; height: 4px; cursor: pointer; }
+  .zoom-val { font-size: 12px; color: #e8c87a; font-weight: 700; min-width: 28px; text-align: right; }
   .scan-notfound { font-size: 13px; color: #ff8a8a; text-align: center; }
   .tap-hint { font-size: 11px; color: #2e2e44; margin-left: auto; white-space: nowrap; }
   .footer { position: fixed; bottom: 0; left: 0; right: 0; padding: 6px 14px; display: flex; justify-content: space-between; align-items: flex-end; pointer-events: none; z-index: 50; }
@@ -252,6 +256,11 @@
       <button class="scan-close" onclick="closeScanner()">✕</button>
     </div>
     <div id="scan-reader"></div>
+    <div class="zoom-row" id="zoom-row" style="display:none">
+      <span class="zoom-icon">🔍</span>
+      <input type="range" class="zoom-slider" id="zoom-slider" min="1" max="5" step="0.1" value="1" oninput="applyZoom(this.value)">
+      <span class="zoom-val" id="zoom-val">1×</span>
+    </div>
     <div class="scan-status" id="scan-status">카메라를 바코드에 가져다 대세요</div>
     <div class="scan-result" id="scan-result" style="display:none"></div>
   </div>
@@ -613,6 +622,25 @@ function startScanner() {
       ).catch(err => {
         document.getElementById('scan-status').textContent = '카메라 오류: ' + err.message;
       });
+
+      // 줌 슬라이더 초기화
+      document.getElementById('zoom-slider').value = 1;
+      document.getElementById('zoom-val').textContent = '1×';
+      document.getElementById('zoom-row').style.display = 'none';
+
+      // 잠깐 후 줌 지원 여부 확인해서 슬라이더 표시
+      setTimeout(() => {
+        try {
+          const track = html5QrCode.getRunningTrackCameraCapabilities();
+          const zoom = track && track.zoomFeature && track.zoomFeature();
+          if (zoom && zoom.isSupported()) {
+            const max = zoom.max ? zoom.max() : 5;
+            const slider = document.getElementById('zoom-slider');
+            slider.max = Math.min(max, 8);
+            document.getElementById('zoom-row').style.display = 'flex';
+          }
+        } catch(e) {}
+      }, 800);
     })
     .catch(err => {
       const msg = err.name === 'NotAllowedError'
@@ -727,6 +755,15 @@ function renderCartDrawer() {
         <button class="di-remove" onclick="changeQty('${item.id}',0)">✕</button>
       </div>
     </div>`).join('');
+}
+
+function applyZoom(val) {
+  document.getElementById('zoom-val').textContent = parseFloat(val).toFixed(1) + '×';
+  try {
+    const track = html5QrCode.getRunningTrackCameraCapabilities();
+    const zoom = track && track.zoomFeature && track.zoomFeature();
+    if (zoom && zoom.isSupported()) zoom.apply(parseFloat(val));
+  } catch(e) {}
 }
 
 function clearCart() {
