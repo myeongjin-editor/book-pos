@@ -70,6 +70,7 @@
   .scan-modal { background: #121220; border-radius: 16px 16px 0 0; width: 100vw; max-width: 480px; margin: auto auto 0; padding: 20px 20px 32px; display: flex; flex-direction: column; gap: 14px; }
   .scan-head { display: flex; justify-content: space-between; align-items: center; }
   .scan-title { font-size: 16px; font-weight: 800; }
+  .scan-close { background: #1c1c2e; border: none; color: #aaa; font-size: 20px; width: 36px; height: 36px; border-radius: 50%; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; }
   #scan-reader { width: 100%; border-radius: 10px; overflow: hidden; }
   #scan-reader video { border-radius: 10px; }
   #scan-reader img { display: none; }
@@ -246,7 +247,7 @@
   <div class="scan-modal" onclick="event.stopPropagation()">
     <div class="scan-head">
       <span class="scan-title">바코드 스캔</span>
-      <button class="icon-btn" onclick="closeScanner()">✕</button>
+      <button class="scan-close" onclick="closeScanner()">✕</button>
     </div>
     <div id="scan-reader"></div>
     <div class="scan-status" id="scan-status">카메라를 바코드에 가져다 대세요</div>
@@ -588,10 +589,7 @@ function startScanner() {
       stream.getTracks().forEach(t => t.stop()); // 권한 확인 후 바로 해제
       html5QrCode = new Html5Qrcode('scan-reader');
       html5QrCode.start(
-        {
-          facingMode: 'environment',
-          advanced: [{ focusMode: 'continuous' }, { zoom: 1.5 }]
-        },
+        { facingMode: 'environment' },
         {
           fps: 30,
           qrbox: { width: 260, height: 100 },
