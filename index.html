@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>원더박스 판매 시스템</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
   body { background: #0b0b14; color: #e8e4dc; font-family: 'Apple SD Gothic Neo', 'Pretendard', 'Noto Sans KR', sans-serif; min-height: 100vh; padding-bottom: 90px; }
@@ -51,7 +52,7 @@
   .tab-btn { background: transparent; border: none; border-bottom: 3px solid transparent; color: #444; font-size: 14px; font-weight: 600; padding: 8px 18px 10px; cursor: pointer; transition: color .2s, border-color .2s; font-family: inherit; white-space: nowrap; flex-shrink: 0; }
   .tab-btn.on { color: #e8e4dc; border-bottom-color: #e8c87a; }
   .toolbar { max-width: 860px; margin: 0 auto; padding: 16px 20px 8px; display: flex; align-items: center; gap: 10px; }
-  .search-input { background: #10101a; border: 1px solid #1a1a28; border-radius: 7px; color: #e8e4dc; padding: 8px 13px; font-size: 13px; width: 240px; outline: none; font-family: inherit; }
+  .search-input { background: #10101a; border: 1px solid #1a1a28; border-radius: 7px; color: #e8e4dc; padding: 8px 13px; font-size: 13px; width: 130px; outline: none; font-family: inherit; }
   .search-cnt { font-size: 12px; color: #333; }
   .list-wrap { max-width: 860px; margin: 0 auto; padding: 4px 20px 24px; display: flex; flex-direction: column; gap: 7px; }
   .book-row { display: flex; align-items: center; gap: 10px; }
@@ -65,6 +66,23 @@
   .pill-price.discounted { color: #e8a87a; font-weight: 700; }
   .pill-price.in-cart { color: #e8c87a; font-weight: 700; }
   .pill-badge { background: #e8c87a; color: #0b0b14; font-size: 11px; font-weight: 800; width: 22px; height: 22px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .scan-btn { background: #111120; border: 1px solid #1c1c2e; border-radius: 8px; color: #888; font-size: 13px; font-weight: 600; padding: 8px 13px; cursor: pointer; font-family: inherit; white-space: nowrap; }
+  .scan-modal { background: #121220; border-radius: 16px 16px 0 0; width: 100vw; max-width: 480px; margin: auto auto 0; padding: 20px 20px 32px; display: flex; flex-direction: column; gap: 14px; }
+  .scan-head { display: flex; justify-content: space-between; align-items: center; }
+  .scan-title { font-size: 16px; font-weight: 800; }
+  #scan-reader { width: 100%; border-radius: 10px; overflow: hidden; }
+  #scan-reader video { border-radius: 10px; }
+  #scan-reader img { display: none; }
+  #scan-reader__scan_region { background: #000; border-radius: 10px; }
+  #scan-reader__dashboard { background: #0f0f1c; border-radius: 0 0 10px 10px; padding: 8px; }
+  #scan-reader__dashboard_section_csr button { background: #1c1c2e; border: 1px solid #2a2a3e; color: #888; border-radius: 6px; padding: 6px 12px; font-family: inherit; font-size: 12px; cursor: pointer; }
+  #scan-reader__dashboard_section_swaplink { color: #555; font-size: 11px; }
+  .scan-status { font-size: 13px; color: #555; text-align: center; }
+  .scan-result { background: rgba(232,200,122,0.08); border: 1px solid rgba(232,200,122,0.3); border-radius: 10px; padding: 14px 16px; }
+  .scan-result-title { font-size: 15px; font-weight: 700; color: #e8e4dc; margin-bottom: 4px; }
+  .scan-result-price { font-size: 13px; color: #e8c87a; font-weight: 600; margin-bottom: 12px; }
+  .scan-result-btn { width: 100%; background: #e8c87a; border: none; color: #0b0b14; border-radius: 8px; padding: 12px 0; font-size: 14px; font-weight: 800; cursor: pointer; font-family: inherit; }
+  .scan-notfound { font-size: 13px; color: #ff8a8a; text-align: center; }
   .tap-hint { font-size: 11px; color: #2e2e44; margin-left: auto; white-space: nowrap; }
   .footer { position: fixed; bottom: 0; right: 0; padding: 6px 14px; text-align: right; pointer-events: none; z-index: 50; }
   .footer-name { display: block; font-size: 12px; color: #555; font-weight: 600; }
@@ -86,6 +104,7 @@
   .bar-total { font-size: 15px; font-weight: 800; }
   .bar-open-btn { background: #e8c87a; border: none; color: #0b0b14; border-radius: 8px; padding: 9px 14px; font-size: 13px; font-weight: 800; cursor: pointer; white-space: nowrap; font-family: inherit; }
   .overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.78); backdrop-filter: blur(4px); display: flex; justify-content: flex-end; z-index: 200; }
+  #scan-overlay { justify-content: center; align-items: flex-end; }
   .drawer { width: min(440px, 100vw); background: #121220; border-left: 1px solid #1e1e30; display: flex; flex-direction: column; height: 100%; overflow: hidden; }
   .drawer-head { display: flex; align-items: center; justify-content: space-between; padding: 19px 20px 13px; border-bottom: 1px solid #1e1e30; flex-shrink: 0; }
   .drawer-title { font-size: 16px; font-weight: 800; }
@@ -202,7 +221,7 @@
   <div class="toolbar">
     <input class="search-input" placeholder="🔍  제목 검색" oninput="onSearch(this.value)" id="search-input">
     <span class="search-cnt" id="search-cnt"></span>
-    <span class="tap-hint">탭: 담기 / 재탭: 빼기 / 길게: 추가</span>
+    <button class="scan-btn" onclick="openScanner()">📷 스캔</button>
   </div>
   <div class="list-wrap" id="book-list"></div>
 
@@ -218,6 +237,19 @@
         <button class="bar-open-btn" onclick="openCart()">장바구니 보기</button>
       </div>
     </div>
+  </div>
+</div>
+
+<!-- 바코드 스캔 모달 -->
+<div class="overlay" id="scan-overlay" style="display:none" onclick="closeScanner(event)">
+  <div class="scan-modal" onclick="event.stopPropagation()">
+    <div class="scan-head">
+      <span class="scan-title">바코드 스캔</span>
+      <button class="icon-btn" onclick="closeScanner()">✕</button>
+    </div>
+    <div id="scan-reader"></div>
+    <div class="scan-status" id="scan-status">카메라를 바코드에 가져다 대세요</div>
+    <div class="scan-result" id="scan-result" style="display:none"></div>
   </div>
 </div>
 
@@ -370,7 +402,8 @@ function parseBooks(rows, filename) {
     lastCat = cat;
 
     if (!result[cat]) { result[cat] = []; order.push(cat); }
-    result[cat].push({ id: cat + '_' + result[cat].length, title, price });
+    const isbn = String(cells[3] || '').replace(/\D/g, '');
+    result[cat].push({ id: cat + '_' + result[cat].length, title, price, isbn });
     count++;
   }
 
@@ -501,7 +534,79 @@ function addQty(id) {
   renderBooks(); updateCartBar();
 }
 
-// 모바일 길게 누르기 처리
+// ── 바코드 스캐너 ─────────────────────────────────────────────
+let html5QrCode = null;
+
+function openScanner() {
+  document.getElementById('scan-overlay').style.display = 'flex';
+  document.getElementById('scan-result').style.display = 'none';
+  document.getElementById('scan-status').textContent = '카메라를 바코드에 가져다 대세요';
+  startScanner();
+}
+
+function closeScanner(e) {
+  if (e && e.target !== document.getElementById('scan-overlay')) return;
+  stopScanner();
+  document.getElementById('scan-overlay').style.display = 'none';
+}
+
+function startScanner() {
+  if (html5QrCode) return;
+  html5QrCode = new Html5Qrcode('scan-reader');
+  html5QrCode.start(
+    { facingMode: 'environment' },
+    { fps: 15, qrbox: { width: 280, height: 120 }, aspectRatio: 1.5 },
+    (decodedText) => {
+      const isbn = decodedText.replace(/\D/g, '');
+      handleScanResult(isbn);
+    },
+    () => {}
+  ).catch(() => {
+    document.getElementById('scan-status').textContent = '카메라를 사용할 수 없습니다.';
+  });
+}
+
+function stopScanner() {
+  if (html5QrCode) {
+    html5QrCode.stop().then(() => {
+      html5QrCode.clear();
+      html5QrCode = null;
+    }).catch(() => { html5QrCode = null; });
+  }
+}
+
+function handleScanResult(isbn) {
+  const allFlat = Object.values(allBooks).flat();
+  const book = allFlat.find(b => b.isbn && b.isbn === isbn);
+  const resultEl = document.getElementById('scan-result');
+  const statusEl = document.getElementById('scan-status');
+
+  if (book) {
+    const cp = calcPrice(book.price);
+    statusEl.textContent = '✓ 인식됨';
+    resultEl.style.display = 'block';
+    resultEl.innerHTML = `
+      <div class="scan-result-title">${escHtml(book.title)}</div>
+      <div class="scan-result-price">${fmt(cp)}원</div>
+      <button class="scan-result-btn" onclick="scanAddToCart('${book.id}')">장바구니에 담기</button>`;
+  } else {
+    statusEl.textContent = '';
+    resultEl.style.display = 'block';
+    resultEl.innerHTML = `<div class="scan-notfound">목록에 없는 도서입니다</div>`;
+    setTimeout(() => {
+      resultEl.style.display = 'none';
+      statusEl.textContent = '카메라를 바코드에 가져다 대세요';
+    }, 2000);
+  }
+}
+
+function scanAddToCart(id) {
+  addQty(id);
+  stopScanner();
+  document.getElementById('scan-overlay').style.display = 'none';
+  renderBooks();
+  updateCartBar();
+}
 let pressTimer = null;
 document.addEventListener('touchstart', e => {
   const btn = e.target.closest('.pill');
