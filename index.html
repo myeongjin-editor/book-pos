@@ -73,12 +73,13 @@
   .scan-title { font-size: 16px; font-weight: 800; }
   .scan-close { background: #1c1c2e; border: none; color: #aaa; font-size: 20px; width: 36px; height: 36px; border-radius: 50%; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; }
   #scan-reader { width: 100%; border-radius: 10px; overflow: hidden; }
-  #scan-reader video { border-radius: 10px; }
+  #scan-reader video { width: 100% !important; height: 100% !important; object-fit: cover; border-radius: 10px; aspect-ratio: 1/1; }
   #scan-reader img { display: none; }
-  #scan-reader__scan_region { background: #000; border-radius: 10px; }
-  #scan-reader__dashboard { background: #0f0f1c; border-radius: 0 0 10px 10px; padding: 8px; }
-  #scan-reader__dashboard_section_csr button { background: #1c1c2e; border: 1px solid #2a2a3e; color: #888; border-radius: 6px; padding: 6px 12px; font-family: inherit; font-size: 12px; cursor: pointer; }
-  #scan-reader__dashboard_section_swaplink { color: #555; font-size: 11px; }
+  #scan-reader__scan_region { background: #000; border-radius: 10px; aspect-ratio: 1/1; overflow: hidden; }
+  #scan-reader__scan_region svg { display: none !important; }
+  #scan-reader__scan_region canvas { border: 2px solid rgba(232,200,122,0.6) !important; border-radius: 6px; }
+  #scan-reader__dashboard { display: none; }
+  #scan-reader__header_message { display: none; }
   .scan-status { font-size: 13px; color: #555; text-align: center; }
   .scan-result { background: rgba(232,200,122,0.08); border: 1px solid rgba(232,200,122,0.3); border-radius: 10px; padding: 14px 16px; }
   .scan-result-title { font-size: 15px; font-weight: 700; color: #e8e4dc; margin-bottom: 4px; }
@@ -606,8 +607,8 @@ function startScanner() {
         { facingMode: 'environment' },
         {
           fps: 30,
-          qrbox: { width: 260, height: 100 },
-          aspectRatio: 1.7,
+          qrbox: { width: 240, height: 240 },
+          aspectRatio: 1.0,
           formatsToSupport: [
             Html5QrcodeSupportedFormats.EAN_13,
             Html5QrcodeSupportedFormats.EAN_8,
