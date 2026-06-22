@@ -84,7 +84,8 @@
   .scan-result-btn { width: 100%; background: #e8c87a; border: none; color: #0b0b14; border-radius: 8px; padding: 12px 0; font-size: 14px; font-weight: 800; cursor: pointer; font-family: inherit; }
   .scan-notfound { font-size: 13px; color: #ff8a8a; text-align: center; }
   .tap-hint { font-size: 11px; color: #2e2e44; margin-left: auto; white-space: nowrap; }
-  .footer { position: fixed; bottom: 0; right: 0; padding: 6px 14px; text-align: right; pointer-events: none; z-index: 50; }
+  .footer { position: fixed; bottom: 0; left: 0; right: 0; padding: 6px 14px; display: flex; justify-content: space-between; align-items: flex-end; pointer-events: none; z-index: 50; }
+  .footer-version { font-size: 11px; color: #555; font-weight: 600; }
   .footer-name { display: block; font-size: 12px; color: #555; font-weight: 600; }
   .footer-email { display: block; font-size: 10px; color: #444; }
   .confirm-modal { background: #161626; border: 1px solid #22223a; border-radius: 14px; padding: 28px 24px 20px; width: min(320px, 88vw); margin: auto; align-self: center; }
@@ -315,6 +316,7 @@
 </div>
 
 <div class="footer">
+  <span class="footer-version">원더박스 도서 판매 시스템 1.0</span>
   <span class="footer-name">원더박스 곽편</span>
   <span class="footer-email">balhwa24@gmail.com</span>
 </div>
@@ -332,10 +334,36 @@ let selectedDate = 'all';
 let confirmDeleteId = null;
 
 const STORAGE_KEY = 'wonderbox-sales-v1';
+const BOOKS_KEY   = 'wonderbox-books-v1';
+
 function loadSales() {
   try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); } catch { return []; }
 }
 function saveSales() { localStorage.setItem(STORAGE_KEY, JSON.stringify(sales)); }
+
+function saveBooks() {
+  localStorage.setItem(BOOKS_KEY, JSON.stringify({ allBooks, tabs }));
+}
+function loadBooks() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(BOOKS_KEY));
+    if (saved && saved.tabs && saved.tabs.length > 0) {
+      allBooks = saved.allBooks;
+      tabs = saved.tabs;
+      return true;
+    }
+  } catch {}
+  return false;
+}
+
+// 페이지 로드 시 저장된 도서 목록이 있으면 바로 앱 시작
+window.addEventListener('DOMContentLoaded', () => {
+  if (loadBooks()) {
+    currentTab = tabs[0];
+    sales = loadSales();
+    startApp();
+  }
+});
 
 // ── 유틸 ──────────────────────────────────────────────────────
 function toKST(iso) {
@@ -421,7 +449,7 @@ function parseBooks(rows, filename) {
   tabs = order;
   currentTab = tabs[0];
   sales = loadSales();
-
+  saveBooks();
   startApp();
 }
 
@@ -446,6 +474,7 @@ function reloadApp() {
 function doReload() {
   document.getElementById('reload-overlay').style.display = 'none';
   cart = [];
+  localStorage.removeItem(BOOKS_KEY);
   document.getElementById('app-screen').style.display = 'none';
   document.getElementById('upload-screen').style.display = 'flex';
   document.getElementById('upload-error').style.display = 'none';
@@ -554,8 +583,20 @@ function startScanner() {
   if (html5QrCode) return;
   html5QrCode = new Html5Qrcode('scan-reader');
   html5QrCode.start(
-    { facingMode: 'environment' },
-    { fps: 15, qrbox: { width: 280, height: 120 }, aspectRatio: 1.5 },
+    {
+      facingMode: 'environment',
+      advanced: [{ focusMode: 'continuous' }, { zoom: 1.5 }]
+    },
+    {
+      fps: 30,
+      qrbox: { width: 260, height: 100 },
+      aspectRatio: 1.7,
+      formatsToSupport: [
+        Html5QrcodeSupportedFormats.EAN_13,
+        Html5QrcodeSupportedFormats.EAN_8,
+        Html5QrcodeSupportedFormats.CODE_128,
+      ],
+    },
     (decodedText) => {
       const isbn = decodedText.replace(/\D/g, '');
       handleScanResult(isbn);
