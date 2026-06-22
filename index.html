@@ -112,6 +112,7 @@
   .drawer-head { display: flex; align-items: center; justify-content: space-between; padding: 19px 20px 13px; border-bottom: 1px solid #1e1e30; flex-shrink: 0; }
   .drawer-title { font-size: 16px; font-weight: 800; }
   .drawer-qty { font-size: 13px; color: #e8c87a; font-weight: 700; margin-left: 5px; }
+  .clear-cart-btn { background: transparent; border: 1px solid #2e2e44; color: #555; font-size: 12px; padding: 4px 10px; border-radius: 6px; cursor: pointer; font-family: inherit; }
   .icon-btn { background: transparent; border: none; color: #444; font-size: 16px; cursor: pointer; padding: 2px 4px; }
   .drawer-empty { flex: 1; display: flex; align-items: center; justify-content: center; color: #333; font-size: 14px; }
   .drawer-list { flex: 1; overflow-y: auto; padding: 6px 0; }
@@ -272,7 +273,10 @@
   <div class="drawer" onclick="event.stopPropagation()">
     <div class="drawer-head">
       <span>장바구니 <span class="drawer-qty" id="cart-drawer-qty"></span></span>
-      <button class="icon-btn" onclick="closeCart()">✕</button>
+      <div style="display:flex; align-items:center; gap:8px;">
+        <button class="clear-cart-btn" id="clear-cart-btn" onclick="clearCart()">모두 삭제</button>
+        <button class="icon-btn" onclick="closeCart()">✕</button>
+      </div>
     </div>
     <div class="drawer-list" id="cart-drawer-list"></div>
     <div class="drawer-foot">
@@ -606,13 +610,7 @@ function startScanner() {
           handleScanResult(isbn);
         },
         () => {}
-      ).then(() => {
-        // 시작 후 zoom 적용으로 최소 초점거리 단축
-        const track = html5QrCode.getRunningTrackCameraCapabilities();
-        if (track && track.zoomFeature && track.zoomFeature().isSupported()) {
-          track.zoomFeature().apply(2);
-        }
-      }).catch(err => {
+      ).catch(err => {
         document.getElementById('scan-status').textContent = '카메라 오류: ' + err.message;
       });
     })
@@ -660,10 +658,18 @@ function handleScanResult(isbn) {
 
 function scanAddToCart(id) {
   addQty(id);
-  stopScanner();
-  document.getElementById('scan-overlay').style.display = 'none';
   renderBooks();
   updateCartBar();
+
+  // 담은 후 결과창 초기화하고 계속 스캔 대기
+  const book = Object.values(allBooks).flat().find(b => b.id === id);
+  const resultEl = document.getElementById('scan-result');
+  const statusEl = document.getElementById('scan-status');
+  resultEl.innerHTML = `<div style="text-align:center; color:#e8c87a; font-size:13px; font-weight:700;">✓ 담겼습니다</div>`;
+  setTimeout(() => {
+    resultEl.style.display = 'none';
+    statusEl.textContent = '카메라를 바코드에 가져다 대세요';
+  }, 1200);
 }
 let pressTimer = null;
 document.addEventListener('touchstart', e => {
@@ -704,6 +710,8 @@ function renderCartDrawer() {
   document.getElementById('cart-drawer-qty').textContent = totalQty+'권';
   document.getElementById('cart-drawer-total').textContent = fmt(totalAmt)+'원';
   document.getElementById('checkout-btn').disabled = cart.length===0;
+  const clearBtn = document.getElementById('clear-cart-btn');
+  if (clearBtn) clearBtn.style.display = cart.length > 0 ? '' : 'none';
   const list = document.getElementById('cart-drawer-list');
   if (!cart.length) { list.innerHTML='<div class="drawer-empty">담긴 도서가 없습니다</div>'; return; }
   list.innerHTML = cart.map(item=>`
@@ -719,6 +727,13 @@ function renderCartDrawer() {
         <button class="di-remove" onclick="changeQty('${item.id}',0)">✕</button>
       </div>
     </div>`).join('');
+}
+
+function clearCart() {
+  cart = [];
+  renderBooks();
+  updateCartBar();
+  renderCartDrawer();
 }
 
 function changeQty(id, qty) {
