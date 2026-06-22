@@ -67,7 +67,8 @@
   .pill-price.in-cart { color: #e8c87a; font-weight: 700; }
   .pill-badge { background: #e8c87a; color: #0b0b14; font-size: 11px; font-weight: 800; width: 22px; height: 22px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
   .scan-btn { background: #111120; border: 1px solid #1c1c2e; border-radius: 8px; color: #888; font-size: 13px; font-weight: 600; padding: 8px 13px; cursor: pointer; font-family: inherit; white-space: nowrap; }
-  .scan-modal { background: #121220; border-radius: 16px 16px 0 0; width: 100vw; max-width: 480px; margin: auto auto 0; padding: 20px 20px 32px; display: flex; flex-direction: column; gap: 14px; }
+  .scan-modal { background: #121220; border-radius: 16px 16px 0 0; width: 100vw; max-width: 480px; margin: auto auto 0; padding: 20px 20px 32px; display: flex; flex-direction: column; gap: 14px; max-height: 67vh; overflow-y: auto; }
+  #scan-overlay { justify-content: center; align-items: flex-end; }
   .scan-head { display: flex; justify-content: space-between; align-items: center; }
   .scan-title { font-size: 16px; font-weight: 800; }
   .scan-close { background: #1c1c2e; border: none; color: #aaa; font-size: 20px; width: 36px; height: 36px; border-radius: 50%; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; }
@@ -605,7 +606,13 @@ function startScanner() {
           handleScanResult(isbn);
         },
         () => {}
-      ).catch(err => {
+      ).then(() => {
+        // 시작 후 zoom 적용으로 최소 초점거리 단축
+        const track = html5QrCode.getRunningTrackCameraCapabilities();
+        if (track && track.zoomFeature && track.zoomFeature().isSupported()) {
+          track.zoomFeature().apply(2);
+        }
+      }).catch(err => {
         document.getElementById('scan-status').textContent = '카메라 오류: ' + err.message;
       });
     })
